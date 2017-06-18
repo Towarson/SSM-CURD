@@ -12,6 +12,7 @@
 <jsp:include page="/WEB-INF/pages/common/include.jsp"></jsp:include>
 </head>
 <body>
+	<!--后台返回json数据，前台拼串完成列表循环  -->
 	<!-- 搭建显示页面-->
 	<div class="container">
 		<!-- 标题-->
@@ -21,41 +22,16 @@
 			</div>
 		</div>
 		<!--按钮-->
-		<div class="row">
-			<div class="col-md-4 col-md-offset-8">
-				<button id="forAdd" class="btn btn-primary">新增</button>
-				<button id="forDel" class="btn btn-danger">删除</button>
-			</div>
-		</div>
+		<div id="toolbar">
+             <button id="forAdd" class="btn btn-primary" data-toggle="modal" data-target="#addModal">新增</button>
+             <button id="forDel" class="btn btn-danger"  data-toggle="modal" data-target="#addModal">删除</button>
+        </div>
+        
 		<!-- 显示表格数据 -->
-		<div class="row">
-			<div class="col-md-12">
-				<table class="table table-hover" id="emps_table">
-					<thead>
-						<tr>
-							<th>#</th>
-							<th>员工姓名</th>
-							<th>性别</th>
-							<th>邮箱</th>
-							<th>部门</th>
-							<th>操作</th>
-						</tr>
-					</thead>
-					<tbody>
-					
-					</tbody>
-				</table>
-			</div>
-		</div>
-		<!--显示分页信息 -->
-		<div class="row">
-			<!-- 分页的文字信息 -->
-			<div id="page_info_area" class="col-md-6" ></div>
-			<!-- 分页条信息 -->
-			<div id="page_nav_area" class="col-md-6">
-
-			</div>
-		</div>
+		<table id="emp-table" class="table table-hover" data-toolbar="#toolbar"></table>
+		
+		<!--时钟 -->
+		<div class="your-clock"></div>
 	</div>
 	
 	<!-- 新增模态框 -->
@@ -115,112 +91,105 @@
 		var currentPage;//当前页面
 		//1.页面加载完成以后,直接去发送一个ajax请求,要到分页数据
 		$(function(){
-			to_page(1);
+			//根据窗口调整表格高度
+            $(window).resize(function() {
+                $('#emp-table').bootstrapTable('resetView', {
+                    height: tableHeight()
+                });
+            });
+			initTable();
 			validator();
-		});
-		//跳转到指定页面
-		function to_page(pn){
-			$.ajax({
-				url:"${path}/emp/getWithJson",
-				data:{"pageNo": pn, "pageSize": '5'},
-				type:"get",
-				success:function(result){
-					//console.log(result);
-					//1.在页面上解析并显示员工数据
-					build_emp_table(result);
-					//2.解析并显示分页信息
-					build_page_info(result);
-					//2.解析并显示分页条
-					build_emp_nav(result);
-				}
-			});
-		}
-		//解析显示表格数据
-		function build_emp_table(result){
-			//清空table表格
-			$("#emps_table tbody").empty();
-			var emps = result.extend.pageInfo.list;
-			$.each(emps,function(index,item){
-				var empIdTd = $("<td></td>").append(item.empId);
-				var empNameTd = $("<td></td>").append(item.empName);
-				var genderTd = $("<td></td>").append(item.gender=="M" ? "男" : "女");
-				var emailTd = $("<td></td>").append(item.email);
-				var deptNameTd = $("<td></td>").append(item.department.deptName);
-				var editBtn = $("<button></button>").addClass("btn btn-info btn-sm")
-																			.append("<span></span>").addClass("glyphicon glyphicon-wrench emp_update")
-																			.append("编辑");
-				editBtn.attr("edit_id",item.empId);
-				var delBtn = $("<button></button>").addClass("btn btn-danger btn-sm")
-																		    .append("<span></span>").addClass("glyphicon glyphicon-trash emp_delete")
-																			.append("删除");
-				delBtn.attr("delete_id",item.empId);
-				var btnTd = $("<td></td>").append(editBtn).append("&nbsp;").append(delBtn);
-				$("<tr></tr>").append(empIdTd)
-									  .append(empNameTd)
-									  .append(genderTd)
-									  .append(emailTd)
-									  .append(deptNameTd)
-									  .append(btnTd)
-									  .appendTo("#emps_table tbody");
-			});
-		}
-		//解析显示分页信息
-		function build_page_info(result){
-			$("#page_info_area").empty();
-			$("#page_info_area").append("当前第 "+result.extend.pageInfo.pageNum+" 页,共 "+result.extend.pageInfo.pages+" 页,共 "+result.extend.pageInfo.total+" 条记录");
-			totalPage = result.extend.pageInfo.pages;
-			currentPage = result.extend.pageInfo.pageNum;
-		}
-		//解析显示分页条
-		function build_emp_nav(result){
-			$("#page_nav_area").empty();
-			var ul = $("<ul></ul").addClass("pagination");
 			
-			var firstPageLi = $("<li></li>").append($("<a></a>").append("首页").attr("href","#"));//首页
-			var preSpan = $("<span></span>").append("&laquo;").attr("aria-hidden","true");
-			var prePageLi = $("<li></li>").append($("<a></a>").attr("href","#").append(preSpan));//前一页
-			if(result.extend.pageInfo.hasPreviousPage==false){
-				firstPageLi.addClass("disabled");
-				prePageLi.addClass("disabled");
-			}
-			firstPageLi.click(function(){
-				to_page(1);
+		});
+		//创建Table
+		function initTable(){
+			$("#emp-table").bootstrapTable({
+				url:"${path}/emp/list",
+				method:'POST',
+		        dataType:'json',
+		        contentType: "application/x-www-form-urlencoded",//必须的,操你大爷！！！
+		        height: tableHeight(),				//高度调整
+		        search: true,						//是否搜索
+		        searchAlign: "left",				//查询框对齐方式
+		        cache: false,
+		        striped: true,                      //是否显示行间隔色
+		        sidePagination: "server",           //分页方式：client客户端分页，server服务端分页（*）
+		        height: $(window).height() - 110,
+		        width:$(window).width(),
+		        showColumns:true,
+		        queryParamsType:'',//默认值为 'limit' ,在默认情况下 传给服务端的参数为：offset,limit,sort.设置为 ''  在这种情况下传给服务器的参数为：pageSize,pageNumber
+		        queryParams: function getParams(params) {
+                    params.other = "otherInfo";//params obj
+                    return params;
+                },									//前端调用服务时，会默认传递上边提到的参数，如果需要添加自定义参数，可以自定义一个函数返回请求参数
+		        searchOnEnterKey: false,			//回车搜索
+		        showRefresh: true,					//刷新按钮
+		        showColumns: true,					//列选择按钮
+		        showToggle: true,					//是否显示 切换试图（table/card）按钮
+		        showPaginationSwitch: true,			//是否显示 数据条数选择框
+		        clickToSelect: true,				//设置true 将在点击行时，自动选择rediobox 和 checkbox
+		        buttonsAlign: "left",				//按钮对齐方式
+		        toolbar: "#toolbar",				//指定工具栏
+		        buttonsAlign: "left",				//按钮对齐方式
+		        toolbarAlign: "right",				//工具栏对齐方式
+		        minimumCountColumns:2, 				//最少允许的列数
+		        pagination:true,
+		        pageNumber:1,                       //初始化加载第一页，默认第一页
+		        pageSize: 10,                       //每页的记录行数（*）
+		        pageList: [10, 20, 50, 100],        //可供选择的每页的行数（*）
+		        columns: [ 
+		          {
+                        title: "全选",
+                        field: "select",
+                        checkbox: true
+                  },{
+                      field: '',
+                      title: '编号',
+                      formatter: function (value, row, index) {
+                      		return index+1;
+          			  }
+                  },{
+                      field : 'empName',
+                      title : '员工姓名',
+                      align : 'center',
+                      valign : 'middle',
+                      sortable : true
+                  }, {
+                      field : 'gender',
+                      title : '性别',
+                      align : 'center',
+                      valign : 'middle',
+                      sortable : true,
+                      formatter : function (value, row, index){
+                    	  var gender = (value=="M" ? "男" : "女");
+                          return gender;
+                      }
+                  }, {
+                      field : 'email',
+                      title : '邮箱',
+                      align : 'center',
+                      valign : 'middle'
+                  }, {
+                      field : 'department.deptName',
+                      title : '部门',
+                      align : 'center',
+                      valign : 'middle',
+                      sortable : true
+                  }, {
+                      field : '',
+                      title : '操作',
+                      align : 'center',
+                      valign : 'middle',
+                      formatter : function (value, row, index){
+                    	  return "<a href='javascript:void(0)' onclick='javascript:updateEmp(\""+index+"\")'>修改</a>&nbsp;&nbsp;&nbsp;<a href='javascript:void(0)' onclick='javascript:deleteEmp(\""+index+"\")'>删除</a>";
+                      }
+                  }],
 			});
-			prePageLi.click(function(){
-				to_page(result.extend.pageInfo.pageNum-1);
-			});
-			var nextSpan = $("<span></span>").append("&raquo;").attr("aria-hidden","true");
-			var nextPageLi = $("<li></li>").append($("<a></a>").attr("href","#").append(nextSpan));//后一页
-			var lastPageLi = $("<li></li>").append($("<a></a>").append("末页").attr("href","#"));//末页
-			if(result.extend.pageInfo.hasNextPage==false){
-				nextPageLi.addClass("disabled");
-				lastPageLi.addClass("disabled");
-			}
-			nextPageLi.click(function(){
-				to_page(result.extend.pageInfo.pageNum+1);
-			});
-			lastPageLi.click(function(){
-				to_page(result.extend.pageInfo.pages);
-			});
-			//添加首页和上一页
-			ul.append(firstPageLi).append(prePageLi)
-			$.each(result.extend.pageInfo.navigatepageNums,function(index,item){
-				
-				var numLi = $("<li></li>").append($("<a></a>").append(item).attr("href","#"));//末页
-				if(result.extend.pageInfo.pageNum==item) {
-					numLi.addClass("active");
-				}
-				numLi.click(function(){
-					to_page(item);
-				});
-				ul.append(numLi);
-			});
-			//添加下一页和末页
-			ul.append(nextPageLi).append(lastPageLi);
-			var navEle = $("<nav></nav>").append(ul).attr("aria-label","Page navigation");
-			navEle.appendTo("#page_nav_area");
 		}
-		
+		//高度
+        function tableHeight() {
+            return $(window).height() - 120;
+        }
 		//添加-新增员工
 		$("#forAdd").click(function(){
 			$('#empAddForm')[0].reset(); //重置表单
@@ -235,6 +204,27 @@
 			});
 			$("#myModalLabel").html("添加员工");
 		});
+		
+		//修改
+		function updateEmp(index){
+			$('#empAddForm')[0].reset(); //重置表单
+			var $table = $('#emp-table');
+			alert(JSON.stringify($table.bootstrapTable('getData')));
+			alert('getRowByUniqueId: ' + JSON.stringify($table.bootstrapTable('getRowByUniqueId', 1)));
+			return false;
+			var row = $('#emp-table').bootstrapTable('getRowByUniqueId', index);//根据行数获取该行的数据
+			getDepts("#empAddModal select");
+			$('#empAddModal').on('hidden.bs.modal', function() {
+		        $("#empAddForm").data('bootstrapValidator').destroy();
+		        $('#empAddForm').data('bootstrapValidator', null);
+		        validator();
+		    });//Modal验证销毁重构
+		    getEmp(row.empId);//获取员工信息，回显用
+			$("#empAddModal").modal({
+				backdrop:"static"
+			});
+			$("#myModalLabel").html("修改员工");
+		}
 		
 		//查出所有部门信息
 		function getDepts(ele){
@@ -253,6 +243,22 @@
 			pleaseSelect.appendTo(ele);
 		}
 		
+		//根据ID,获取员工信息
+		function getEmp(id) {
+			$.ajax({
+				url:"${path}/emp/"+id,
+				type:"GET",
+				success:function(result){
+					var employee = result.extend.employee;
+					$("#empId").val(employee.empId);
+					$("#empName").val(employee.empName);
+					$("#email").val(employee.email);
+					$("input[name=gender]").val([employee.gender]);//单选框
+					$("#empAddModal select").val([employee.dId]);//下拉框
+				}
+			});
+		}
+		
 		//保存员工信息
 		$("#emp_save_btn").click(function(){
 			var bootstrapValidator = $("#empAddForm").data("bootstrapValidator");
@@ -268,7 +274,7 @@
 						success:function(result){
 							if(result.code==100) {//成功
 								$('#empAddModal').modal('hide');//关闭窗口
-								to_page(totalPage);//最后一页
+								$('#emp-table').bootstrapTable('refresh');  
 							}else{//失败
 								validator();
 							}
@@ -285,7 +291,7 @@
 						success:function(result){
 							if(result.code==100) {//成功
 								$('#empAddModal').modal('hide');//关闭窗口
-								to_page(currentPage);//前往当前页
+								$('#emp-table').bootstrapTable('refresh');  
 							}else{//失败
 								validator();
 							}
@@ -297,115 +303,72 @@
 	        	}
 	        }
 		});
+		
+		//删除
+		function deleteEmp(index){
+			var row = $('#emp-table').bootstrapTable('getRowByUniqueId', index);//根据行数获取该行的数据
+			if(confirm("确认删除【"+row.empName+"】吗？")){
+				//2.确认删除
+				$.ajax({
+					url:"${path}/emp/"+row.empId,
+					type:"DELETE",
+					success:function(result){
+						alert(result.msg);
+						$('#emp-table').bootstrapTable('refresh');  
+					}
+				});
+			}
+		}
+		
+		//批量删除
+		$("#forDel").click(function(){
+			var rows = $('#emp-table').bootstrapTable('getSelections');//获取所有被选中的行
+			if(rows.length>=1){
+				if(confirm("你确认要删除吗？")){
+					var empIds = '';
+	 				for(var i=0;i<rows.length;i++){
+	 					empIds = empIds+rows[i].empId;
+	    			    if(i<rows.length-1){
+	    			    	empIds=empIds+",";
+	    			    }
+	 				}
+					$.ajax({
+						url:"${path}/emp/"+empIds,
+						type:"DELETE",
+						success:function(result){
+							alert(result.msg);
+							$('#emp-table').bootstrapTable('refresh');  
+						}
+					});
+				}
+			}else{
+				$.messager.alert('提示消息','请先选择一条记录!','info');
+			}
+		});
+		
+		
 		//校验
 		function validator() {
 			$("#empAddForm").bootstrapValidator({
-			    /**
-			    *  指定不验证的情况
-			    *  值可设置为以下三种类型：
-			    *  1、String  ':disabled, :hidden, :not(:visible)'
-			    *  2、Array  默认值  [':disabled', ':hidden', ':not(:visible)']
-			    *  3、带回调函数  
-			        [':disabled', ':hidden', function($field, validator) {
-			            // $field 当前验证字段dom节点
-			            // validator 验证实例对象 
-			            // 可以再次自定义不要验证的规则
-			            // 必须要return，return true or false; 
-			            return !$field.is(':visible');
-			        }]
-			    */
 			    excluded: [':disabled', ':hidden', ':not(:visible)'],
-			    /**
-			    * 指定验证后验证字段的提示字体图标。（默认是bootstrap风格）
-			    * Bootstrap 版本 >= 3.1.0
-			    * 也可以使用任何自定义风格，只要引入好相关的字体文件即可
-			    * 默认样式 
-			        .form-horizontal .has-feedback .form-control-feedback {
-			            top: 0;
-			            right: 15px;
-			        }
-			    * 自定义该样式覆盖默认样式
-			        .form-horizontal .has-feedback .form-control-feedback {
-			            top: 0;
-			            right: -15px;
-			        }
-			        .form-horizontal .has-feedback .input-group .form-control-feedback {
-			            top: 0;
-			            right: -30px;
-			        }
-			    */
 			    feedbackIcons: {
 			        valid: 'glyphicon glyphicon-ok',
 			        invalid: 'glyphicon glyphicon-remove',
 			        validating: 'glyphicon glyphicon-refresh'
 			    },
-			    /**
-			    * 生效规则（三选一）
-			    * enabled 字段值有变化就触发验证
-			    * disabled,submitted 当点击提交时验证并展示错误信息
-			    */
 			    live: 'enabled',
-			    /**
-			    * 为每个字段指定通用错误提示语
-			    */
 			    message: 'This value is not valid',
-			    /**
-			    * 指定提交的按钮，例如：'.submitBtn' '#submitBtn'
-			    * 当表单验证不通过时，该按钮为disabled
-			    */
 			    submitButtons: 'button[type="submit"]',
-			    /**
-			    * submitHandler: function(validator, form, submitButton) {
-			    *   //validator: 表单验证实例对象
-			    *   //form  jq对象  指定表单对象
-			    *   //submitButton  jq对象  指定提交按钮的对象
-			    * }
-			    * 在ajax提交表单时很实用
-			    *   submitHandler: function(validator, form, submitButton) {
-			            // 实用ajax提交表单
-			            $.post(form.attr('action'), form.serialize(), function(result) {
-			                // .自定义回调逻辑
-			            }, 'json');
-			         }
-			    * 
-			    */
 			    submitHandler: null,
-			    /**
-			    * 为每个字段设置统一触发验证方式（也可在fields中为每个字段单独定义），默认是live配置的方式，数据改变就改变
-			    * 也可以指定一个或多个（多个空格隔开） 'focus blur keyup'
-			    */
 			    trigger: null,
-			    /**
-			    * Number类型  为每个字段设置统一的开始验证情况，当输入字符大于等于设置的数值后才实时触发验证
-			    */
 			    threshold: null,
-			    /**
-			    * 表单域配置
-			    */
 			    fields: {
-			        //多个重复
 			        empName: {
-			            //隐藏或显示 该字段的验证
-			            enabled: true,
-			            //错误提示信息
-			            message: '姓名格式不正确',
-			            /**
-			            * 定义错误提示位置  值为CSS选择器设置方式
-			            * 例如：'#firstNameMeg' '.lastNameMeg' '[data-stripe="exp-month"]'
-			            */
+			            enabled: true,//隐藏或显示 该字段的验证
+			            message: '姓名格式不正确',//错误提示信息
 			            container: null,
-			            /**
-			            * 定义验证的节点，CSS选择器设置方式，可不必须是name值。
-			            * 若是id，class, name属性，<fieldName>为该属性值
-			            * 若是其他属性值且有中划线链接，<fieldName>转换为驼峰格式  selector: '[data-stripe="exp-month"]' =>  expMonth
-			            */
 			            selector: null,
-			            /**
-			            * 定义触发验证方式（也可在fields中为每个字段单独定义），默认是live配置的方式，数据改变就改变
-			            * 也可以指定一个或多个（多个空格隔开） 'focus blur keyup'
-			            */
 			            trigger: null,
-			            // 定义每个验证规则
 			            validators: {
 	                        notEmpty: {
 	                            message: '员工姓名不能为空'
@@ -476,37 +439,16 @@
 			    }
 			});
 		}
-		//编辑
-		$(document).on('click','.emp_update',function(){
-			$('#empAddForm')[0].reset(); //重置表单
-			getDepts("#empAddModal select");
-			$('#empAddModal').on('hidden.bs.modal', function() {
-		        $("#empAddForm").data('bootstrapValidator').destroy();
-		        $('#empAddForm').data('bootstrapValidator', null);
-		        validator();
-		    });//Modal验证销毁重构
-		    getEmp($(this).attr("edit_id"));//获取员工信息，回显用
-			$("#empAddModal").modal({
-				backdrop:"static"
-			});
-			$("#myModalLabel").html("修改员工");
+	</script>
+	<script type="text/javascript">
+		var clock = new FlipClock($('.your-clock'), {//对应的是(天,时,分,12小时制,24小时制,计数)
+			clockFace: 'TwentyFourHourClock',//计数模式
 		});
-		
-		//根据ID,获取员工信息
-		function getEmp(id) {
-			$.ajax({
-				url:"${path}/emp/"+id,
-				type:"GET",
-				success:function(result){
-					var employee = result.extend.employee;
-					$("#empId").val(employee.empId);
-					$("#empName").val(employee.empName);
-					$("#email").val(employee.email);
-					$("input[name=gender]").val([employee.gender]);//单选框
-					$("#empAddModal select").val([employee.dId]);//下拉框
-				}
-			});
-		}
+		//设置时间格式的时钟
+		var date = new Date();
+	        clock = $('.clock').FlipClock(date, {
+	        clockFace: 'TwentyFourHourClock'
+		});
 	</script>
 </body>
 </html>

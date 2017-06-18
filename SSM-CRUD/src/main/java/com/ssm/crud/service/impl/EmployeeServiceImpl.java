@@ -1,5 +1,6 @@
 package com.ssm.crud.service.impl;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +59,22 @@ public class EmployeeServiceImpl implements EmployeeService {
 	}
 	
 	/**
+	 * 批量删除员工
+	 * @param ids
+	 */
+	public void deleteBatch(String ids) {
+		List<Integer> idList = new ArrayList<Integer>();
+		String[] idArray = ids.split(",");
+		for (int i = 0; i < idArray.length; i++) {
+			idList.add(Integer.parseInt(idArray[i]));
+		}
+		EmployeeExample example = new EmployeeExample();
+		Criteria criteria = example.createCriteria();
+		criteria.andEmpIdIn(idList);//添加条件
+		this.employeeMapper.deleteByExample(example);//按条件删除
+	}
+	
+	/**
 	 * 检查姓名是否存在
 	 * @param employee
 	 * @return
@@ -101,6 +118,5 @@ public class EmployeeServiceImpl implements EmployeeService {
 	public Employee getEmp(Integer id) {
 		return this.employeeMapper.selectByPrimaryKey(id);
 	}
-	
 	
 }

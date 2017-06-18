@@ -36,6 +36,12 @@ public interface EmployeeService {
 	void deleteEmployee(Integer id);
 	
 	/**
+	 * 批量删除员工
+	 * @param ids
+	 */
+	void deleteBatch(String ids);
+	
+	/**
 	 * 检查姓名是否存在
 	 * @param employee
 	 * @return

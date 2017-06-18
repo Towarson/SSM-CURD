@@ -73,6 +73,27 @@ public class EmployeeController {
 	}
 	
 	/**
+	 * 查询所有员工(分页查询),返回Json数据.
+	 * @ResponseBody 起作用,需要引入Jackson包,将对象转化为json数据
+	 * @param pageNo
+	 * @param pageSize
+	 * @return
+	 */
+	@RequestMapping(value="/list",method=RequestMethod.POST)
+	public @ResponseBody Map<String, Object> empList(@RequestParam(value="pageNumber",required=false,defaultValue="1") Integer pageNum,
+									 				@RequestParam(value="pageSize",required=false,defaultValue="5") Integer pageSize) {
+		Map<String, Object> resultMap =new HashMap<String, Object>();
+		PageHelper.startPage(pageNum,pageSize);
+		//pageHelper紧跟着的查询方法，即为分页查询
+		List<Employee> list = this.employeeservice.getAllEmps();
+		//使用pageInfo将查询结果进行查询
+		PageInfo<Employee> page = new PageInfo<Employee>(list,pageSize);
+		resultMap.put("rows", page.getList());
+		resultMap.put("total", page.getTotal());
+		return resultMap;
+	}
+	
+	/**
 	 * 保存员工
 	 * @param employee @Valid进行校验
 	 * @param bindingResult 校验结果
@@ -119,11 +140,21 @@ public class EmployeeController {
 		}
 	}
 	
-	@RequestMapping(value="/{id}",method=RequestMethod.DELETE)
-	public @ResponseBody Msg deleteEmployee(@PathVariable("id") Integer id) {
-		this.employeeservice.deleteEmployee(id);
-		return null;
+	/**
+	 * 删除员工
+	 * @param id
+	 * @return
+	 */
+	@RequestMapping(value="/{ids}",method=RequestMethod.DELETE)
+	public @ResponseBody Msg deleteEmployee(@PathVariable("ids") String ids) {
+		if(ids.contains(",")) {
+			this.employeeservice.deleteBatch(ids);//批量删除
+		}else{
+			this.employeeservice.deleteEmployee(Integer.parseInt(ids));//单个删除
+		}
+		return Msg.success();
 	}
+	
 	/**
 	 * 检查用户是否存在
 	 * @param employee

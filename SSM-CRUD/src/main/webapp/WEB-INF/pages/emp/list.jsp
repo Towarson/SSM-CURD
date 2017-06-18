@@ -1,5 +1,4 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8"
-    pageEncoding="UTF-8"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
  <%
  		pageContext.setAttribute("path",request.getContextPath());
@@ -12,6 +11,7 @@
 <jsp:include page="/WEB-INF/pages/common/include.jsp"></jsp:include>
 </head>
 <body>
+	<!--C标签完成列表循环  -->
 	<!-- 搭建显示页面-->
 	<div class="container">
 		<!-- 标题-->
