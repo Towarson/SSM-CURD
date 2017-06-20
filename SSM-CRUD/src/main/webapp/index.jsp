@@ -133,6 +133,8 @@
 		        buttonsAlign: "left",				//按钮对齐方式
 		        toolbarAlign: "right",				//工具栏对齐方式
 		        minimumCountColumns:2, 				//最少允许的列数
+		        idField : "empId",					//指定主键
+		        uniqueId : "empId",					//Indicate an unique identifier for each row.
 		        pagination:true,
 		        pageNumber:1,                       //初始化加载第一页，默认第一页
 		        pageSize: 10,                       //每页的记录行数（*）
@@ -148,6 +150,9 @@
                       formatter: function (value, row, index) {
                       		return index+1;
           			  }
+                  },{
+                      field: 'empId',
+                      title: '员工ID',
                   },{
                       field : 'empName',
                       title : '员工姓名',
@@ -181,7 +186,7 @@
                       align : 'center',
                       valign : 'middle',
                       formatter : function (value, row, index){
-                    	  return "<a href='javascript:void(0)' onclick='javascript:updateEmp(\""+index+"\")'>修改</a>&nbsp;&nbsp;&nbsp;<a href='javascript:void(0)' onclick='javascript:deleteEmp(\""+index+"\")'>删除</a>";
+                    	  return "<a href='javascript:void(0)' onclick='javascript:updateEmp(\""+row.empId+"\")'>修改</a>&nbsp;&nbsp;&nbsp;<a href='javascript:void(0)' onclick='javascript:deleteEmp(\""+row.empId+"\")'>删除</a>";
                       }
                   }],
 			});
@@ -206,13 +211,11 @@
 		});
 		
 		//修改
-		function updateEmp(index){
+		function updateEmp(empId){
+			
 			$('#empAddForm')[0].reset(); //重置表单
 			var $table = $('#emp-table');
-			alert(JSON.stringify($table.bootstrapTable('getData')));
-			alert('getRowByUniqueId: ' + JSON.stringify($table.bootstrapTable('getRowByUniqueId', 1)));
-			return false;
-			var row = $('#emp-table').bootstrapTable('getRowByUniqueId', index);//根据行数获取该行的数据
+			var row = $table.bootstrapTable('getRowByUniqueId', parseInt(empId));//根据行数获取该行的数据
 			getDepts("#empAddModal select");
 			$('#empAddModal').on('hidden.bs.modal', function() {
 		        $("#empAddForm").data('bootstrapValidator').destroy();
@@ -306,7 +309,8 @@
 		
 		//删除
 		function deleteEmp(index){
-			var row = $('#emp-table').bootstrapTable('getRowByUniqueId', index);//根据行数获取该行的数据
+			var $table = $('#emp-table');
+			var row = $table.bootstrapTable('getRowByUniqueId', index);//根据行数获取该行的数据
 			if(confirm("确认删除【"+row.empName+"】吗？")){
 				//2.确认删除
 				$.ajax({
